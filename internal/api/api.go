@@ -31,6 +31,20 @@ func New(ctx context.Context, app App, accrualURL string) *api {
 func (a api) initRouter() {
 	a.router.Use(middleware.Logger, middleware.Recoverer) // todo auth, gzip
 	a.router.Get("/ok", a.simpleHandler)
+	a.router.Route("/api/user", func(r chi.Router) {
+		r.Post("/register", a.registerHandler)
+		r.Post("/login", a.authHandler)
+		r.Group(
+			func(r chi.Router) {
+				r.Use(a.authCheckMiddleware)
+				r.Post("/orders", a.postOrdersHandler)
+				r.Get("/orders", a.getOrdersHandler)
+				r.Get("/balance", a.balanceHandler)
+				r.Post("/balance/withdraw", a.withdrawHandler)
+				r.Get("/withdrawals", a.allWithdrawalsHandler)
+			})
+	})
+
 }
 
 func (a api) simpleHandler(res http.ResponseWriter, req *http.Request) {
@@ -64,4 +78,24 @@ func (a api) SeverStart(ctx context.Context, apiURL string) error {
 		fmt.Printf("exit reason: %s \n", err)
 	}
 	return nil
+}
+
+func (a api) postOrdersHandler(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusOK)
+}
+
+func (a api) getOrdersHandler(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusOK)
+}
+
+func (a api) balanceHandler(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusOK)
+}
+
+func (a api) withdrawHandler(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusOK)
+}
+
+func (a api) allWithdrawalsHandler(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusOK)
 }
