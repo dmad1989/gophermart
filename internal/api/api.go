@@ -38,13 +38,14 @@ func New(ctx context.Context, app App, accrualURL string, auth Auth) *api {
 
 func (a api) initRouter() {
 	a.router.Use(middleware.Logger, middleware.Recoverer) // todo auth, gzip
-	a.router.Get("/ok", a.simpleHandler)
+	// a.router.Get("/ok", a.simpleHandler)
 	a.router.Route("/api/user", func(r chi.Router) {
 		r.Post("/register", a.auth.RegisterHandler)
 		r.Post("/login", a.auth.LoginHandler)
 		r.Group(
 			func(r chi.Router) {
 				r.Use(a.auth.CheckMiddleware)
+				r.Get("/ok", a.simpleHandler)
 				r.Post("/orders", a.postOrdersHandler)
 				r.Get("/orders", a.getOrdersHandler)
 				r.Get("/balance", a.balanceHandler)

@@ -16,6 +16,7 @@ type Config struct {
 }
 
 var LoggerCtxKey = &ContextKey{"logger"}
+var UserCtxKey = &ContextKey{"userId"}
 
 type ContextKey struct {
 	name string

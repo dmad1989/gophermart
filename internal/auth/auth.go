@@ -122,8 +122,30 @@ func (a auth) LoginHandler(res http.ResponseWriter, req *http.Request) {
 func (a auth) CheckMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextW := w
-		//проверяем токен
-		h.ServeHTTP(nextW, r.WithContext(r.Context()))
+		tCookie, err := r.Cookie("token")
+		if err != nil && !errors.Is(err, http.ErrNoCookie) {
+			errorResponse(w, http.StatusUnauthorized, fmt.Errorf("auth cookie: %w", err))
+			return
+		}
+		if tCookie == nil {
+			errorResponse(w, http.StatusUnauthorized, errors.New("no cookie token"))
+			return
+		}
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tCookie.Value, claims,
+			func(t *jwt.Token) (interface{}, error) {
+				return []byte(secretKey), nil
+			})
+		if err != nil || !token.Valid {
+			errorResponse(w, http.StatusUnauthorized, ErrorInvalidToken)
+			return
+		}
+		if claims.UserID == 0 {
+			errorResponse(w, http.StatusUnauthorized, ErrorNoUser)
+			return
+		}
+		ctx := context.WithValue(r.Context(), config.UserCtxKey, claims.UserID)
+		h.ServeHTTP(nextW, r.WithContext(ctx))
 	})
 }
 
