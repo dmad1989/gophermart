@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
@@ -70,16 +69,13 @@ func (db *DB) CreateUser(ctx context.Context, user jsonobject.User) (int, error)
 		zap.String("login", user.Login),
 		zap.String("password", user.Password),
 		zap.ByteString("hashed", user.HashPassword))
-
-	res, err := db.conn.NamedExecContext(tctx, sqlInsertUser, user)
+	id := []int{}
+	//Сделано через select так как exec возваращает sql.Result, у него есть lastInserted - но это не поддерживается в Postgres
+	err := db.conn.SelectContext(tctx, &id, sqlInsertUser, user.Login, user.HashPassword)
 	if err != nil {
 		return 0, fmt.Errorf("insert user: %w", err)
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("fetching LastInsertId: %w", err)
-	}
-	return int(id), nil
+	return id[0], nil
 }
 
 func (db *DB) GetUserByLogin(ctx context.Context, login string) (jsonobject.User, error) {
@@ -91,18 +87,4 @@ func (db *DB) GetUserByLogin(ctx context.Context, login string) (jsonobject.User
 		return jsonobject.User{}, fmt.Errorf("GetUserByLogin: %w", err)
 	}
 	return user, nil
-}
-
-func (db *DB) CheckUserExists(ctx context.Context, login string) (bool, error) {
-	tctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	user := jsonobject.User{}
-	err := db.conn.GetContext(tctx, &user, sqlUserByLogin, login)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
-		return false, fmt.Errorf("CheckUserExists: %w", err)
-	}
-	return true, nil
 }

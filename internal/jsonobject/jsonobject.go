@@ -4,6 +4,6 @@ package jsonobject
 type User struct {
 	ID           int    `json:"-" db:"ID"`
 	Login        string `json:"login" db:"login"`
-	Password     string `json:"password"`
+	Password     string `json:"password" db:"-"`
 	HashPassword []byte `json:"-" db:"password"`
 }

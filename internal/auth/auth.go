@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -12,6 +13,8 @@ import (
 	"github.com/dmad1989/gophermart/internal/config"
 	"github.com/dmad1989/gophermart/internal/jsonobject"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
@@ -41,7 +44,6 @@ type auth struct {
 type DB interface {
 	CreateUser(ctx context.Context, user jsonobject.User) (int, error)
 	GetUserByLogin(ctx context.Context, login string) (jsonobject.User, error)
-	CheckUserExists(ctx context.Context, login string) (bool, error)
 }
 
 func New(ctx context.Context, db DB) *auth {
@@ -54,35 +56,32 @@ func (a auth) RegisterHandler(res http.ResponseWriter, req *http.Request) {
 		errorResponse(res, http.StatusBadRequest, err)
 		return
 	}
-
-	found, err := a.db.CheckUserExists(req.Context(), user.Login)
-	if found {
-		errorResponse(res, http.StatusConflict, ErrorUserLoginUnique)
-		return
-	}
-	if err != nil {
-		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("register:  %w", err))
-		return
-	}
-
 	// шифруем пароль
 	hashed := sha256.Sum256([]byte(user.Password))
 	user.HashPassword = hashed[:]
-
 	// записываем в БД
-	// TODO сделать все в одной транзакции? проверку, вставку, получение ID
 	user.ID, err = a.db.CreateUser(req.Context(), user)
 	if err != nil {
-		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("register:  %w", err))
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			errorResponse(res, http.StatusConflict, ErrorUserLoginUnique)
+			return
+		}
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("register: %w", err))
 		return
 	}
 	// генерируем токен
 	token, err := generateToken(user.ID)
 	if err != nil {
-		errorResponse(res, http.StatusUnauthorized, ErrorUserPassword)
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("generating token: %w", err))
 		return
 	}
-	res.Header().Set("Authorization", "Bearer "+token)
+	cookie := http.Cookie{
+		Name:  "token",
+		Value: token,
+		Path:  "/",
+	}
+	http.SetCookie(res, &cookie)
 	res.WriteHeader(http.StatusOK)
 }
 
@@ -100,18 +99,23 @@ func (a auth) LoginHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	// проверяем пароль
 	hashed := sha256.Sum256([]byte(user.Password))
-	user.HashPassword = hashed[:]
-	// if userDB.Password != user.HashPassword {
-	// 	errorResponse(res, http.StatusUnauthorized, ErrorUserPassword)
-	// 	return
-	// }
-	// генерируем токен
-	token, err := generateToken(userDB.ID)
-	if err != nil {
+
+	if !bytes.Equal(hashed[:], userDB.HashPassword) {
 		errorResponse(res, http.StatusUnauthorized, ErrorUserPassword)
 		return
 	}
-	res.Header().Set("Authorization", "Bearer "+token)
+	// генерируем токен
+	token, err := generateToken(userDB.ID)
+	if err != nil {
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("generating token:  %w", err))
+		return
+	}
+	cookie := http.Cookie{
+		Name:  "token",
+		Value: token,
+		Path:  "/",
+	}
+	http.SetCookie(res, &cookie)
 	res.WriteHeader(http.StatusOK)
 }
 
