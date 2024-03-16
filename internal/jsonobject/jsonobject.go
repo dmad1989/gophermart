@@ -2,7 +2,8 @@ package jsonobject
 
 //go:generate easyjson -all jsonobject.go
 type User struct {
-	Login        string `json:"login"`
+	ID           int    `json:"-" db:"ID"`
+	Login        string `json:"login" db:"login"`
 	Password     string `json:"password"`
-	HashPassword string `json:"-"`
+	HashPassword []byte `json:"-" db:"password"`
 }

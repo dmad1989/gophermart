@@ -15,6 +15,12 @@ type Config struct {
 	DbConnName string
 }
 
+var LoggerCtxKey = &ContextKey{"logger"}
+
+type ContextKey struct {
+	name string
+}
+
 var conf = Config{}
 
 func init() {

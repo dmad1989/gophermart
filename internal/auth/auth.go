@@ -2,101 +2,117 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	"github.com/dmad1989/gophermart/internal/config"
 	"github.com/dmad1989/gophermart/internal/jsonobject"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgerrcode"
-
-	argonpass "github.com/dwin/goArgonPass"
+	"github.com/golang-jwt/jwt/v4"
+	"go.uber.org/zap"
 )
 
+type Claims struct {
+	jwt.RegisteredClaims
+	UserID int
+}
+
+var (
+	ErrorNoUser             = errors.New("no userid in auth token")
+	ErrorInvalidToken       = errors.New("auth token not valid")
+	ErrorUserLoginUnique    = errors.New("user login is not unique")
+	ErrorUserPassword       = errors.New("wrong password")
+	ErrorRequestContentType = errors.New("content-type have to be application/json")
+	ErrorRequestLogin       = errors.New("user login in request is empty")
+	ErrorRequestPassword    = errors.New("user password in request is empty")
+)
+
+const tokenExp = time.Hour * 6
+const secretKey = "gopracticgphermarksecretkey"
+
 type auth struct {
-	db DB
+	db     DB
+	logger *zap.SugaredLogger
 }
 
 type DB interface {
-	CreateUser(ctx context.Context, user jsonobject.User) error
+	CreateUser(ctx context.Context, user jsonobject.User) (int, error)
+	GetUserByLogin(ctx context.Context, login string) (jsonobject.User, error)
+	CheckUserExists(ctx context.Context, login string) (bool, error)
 }
 
 func New(ctx context.Context, db DB) *auth {
-	return &auth{db: db}
+	return &auth{db: db, logger: ctx.Value(config.LoggerCtxKey).(*zap.SugaredLogger)}
 }
 
 func (a auth) RegisterHandler(res http.ResponseWriter, req *http.Request) {
 	user, err := getUserFromRequest(req)
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte(err.Error()))
+		errorResponse(res, http.StatusBadRequest, err)
 		return
 	}
+
+	found, err := a.db.CheckUserExists(req.Context(), user.Login)
+	if found {
+		errorResponse(res, http.StatusConflict, ErrorUserLoginUnique)
+		return
+	}
+	if err != nil {
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("register:  %w", err))
+		return
+	}
+
 	// шифруем пароль
-	//TODO отказаться от argonpass, использовать SHA256
-	user.HashPassword, err = argonpass.Hash(user.Password, nil)
-	if err != nil {
-		res.WriteHeader(http.StatusInternalServerError)
-		res.Write([]byte(fmt.Errorf("argonpass, hashing password:  %w", err).Error()))
-		return
-	}
+	hashed := sha256.Sum256([]byte(user.Password))
+	user.HashPassword = hashed[:]
+
 	// записываем в БД
-	err = a.db.CreateUser(req.Context(), user)
+	// TODO сделать все в одной транзакции? проверку, вставку, получение ID
+	user.ID, err = a.db.CreateUser(req.Context(), user)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-			res.WriteHeader(http.StatusConflict)
-			res.Write([]byte(errors.New("user login is not unique!").Error()))
-			return
-		}
-		res.WriteHeader(http.StatusInternalServerError)
-		res.Write([]byte(fmt.Errorf("register:  %w", err).Error()))
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("register:  %w", err))
 		return
 	}
 	// генерируем токен
-
+	token, err := generateToken(user.ID)
+	if err != nil {
+		errorResponse(res, http.StatusUnauthorized, ErrorUserPassword)
+		return
+	}
+	res.Header().Set("Authorization", "Bearer "+token)
 	res.WriteHeader(http.StatusOK)
 }
 
 func (a auth) LoginHandler(res http.ResponseWriter, req *http.Request) {
 	user, err := getUserFromRequest(req)
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte(err.Error()))
+		errorResponse(res, http.StatusBadRequest, fmt.Errorf("check user in DB: %w", err))
 		return
 	}
 	// проверяем пользователя
-	// проверяем пароль
-	//TODO отказаться от argonpass, использовать SHA256
-	err = argonpass.Verify(user.Password, hash)
+	userDB, err := a.db.GetUserByLogin(req.Context(), user.Login)
 	if err != nil {
-		if errors.Is(err, argonpass.ErrHashMismatch) {
-			res.WriteHeader(http.StatusUnauthorized)
-			res.Write([]byte(fmt.Errorf("wrong password:  %w", err).Error()))
-			return
-		}
-		res.WriteHeader(http.StatusInternalServerError)
-		res.Write([]byte(fmt.Errorf("argonpass, checking password:  %w", err).Error()))
+		errorResponse(res, http.StatusUnauthorized, fmt.Errorf("check user in DB: %w", err))
 		return
 	}
+	// проверяем пароль
+	hashed := sha256.Sum256([]byte(user.Password))
+	user.HashPassword = hashed[:]
+	// if userDB.Password != user.HashPassword {
+	// 	errorResponse(res, http.StatusUnauthorized, ErrorUserPassword)
+	// 	return
+	// }
 	// генерируем токен
-	res.WriteHeader(http.StatusOK)
-}
-
-func getUserFromRequest(req *http.Request) (jsonobject.User, error) {
-	var user jsonobject.User
-	if req.Header.Get("Content-Type") != "application/json" {
-		return user, errors.New("content-type have to be application/json")
-	}
-	body, err := io.ReadAll(req.Body)
+	token, err := generateToken(userDB.ID)
 	if err != nil {
-		return user, fmt.Errorf("reading request body: %w", err)
+		errorResponse(res, http.StatusUnauthorized, ErrorUserPassword)
+		return
 	}
-	if err := user.UnmarshalJSON(body); err != nil {
-		return user, fmt.Errorf("cutterJsonHandler: decoding request: %w", err)
-	}
-	return user, nil
+	res.Header().Set("Authorization", "Bearer "+token)
+	res.WriteHeader(http.StatusOK)
 }
 
 func (a auth) CheckMiddleware(h http.Handler) http.Handler {
@@ -105,4 +121,49 @@ func (a auth) CheckMiddleware(h http.Handler) http.Handler {
 		//проверяем токен
 		h.ServeHTTP(nextW, r.WithContext(r.Context()))
 	})
+}
+
+func getUserFromRequest(req *http.Request) (jsonobject.User, error) {
+	var user jsonobject.User
+	if req.Header.Get("Content-Type") != "application/json" {
+		return user, ErrorRequestContentType
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return user, fmt.Errorf("reading request body: %w", err)
+	}
+	if err := user.UnmarshalJSON(body); err != nil {
+		return user, fmt.Errorf("cutterJsonHandler: decoding request: %w", err)
+	}
+	if user.Login == "" {
+		return user, ErrorRequestLogin
+	}
+	if user.Password == "" {
+		return user, ErrorRequestPassword
+	}
+	// todo check not empty?
+	return user, nil
+}
+
+func generateToken(userID int) (string, error) {
+	if userID == 0 {
+		return "", errors.New("generateToken: user id is 0")
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExp)),
+		},
+		UserID: userID,
+	})
+
+	tokenString, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", fmt.Errorf("generateToken: %w", err)
+	}
+	return tokenString, nil
+}
+
+func errorResponse(res http.ResponseWriter, status int, err error) {
+	res.WriteHeader(status)
+	res.Write([]byte(err.Error()))
 }

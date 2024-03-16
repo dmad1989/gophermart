@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,10 +12,16 @@ import (
 	"github.com/dmad1989/gophermart/internal/auth"
 	"github.com/dmad1989/gophermart/internal/config"
 	"github.com/dmad1989/gophermart/internal/db"
+	"go.uber.org/zap"
 )
 
 func main() {
-	ctx := context.Background()
+	log, err := loggerInit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.WithValue(context.Background(), config.LoggerCtxKey, log)
+	defer log.Sync()
 	conf := config.ParseConfig()
 	db, err := db.New(ctx, conf.DbConnName)
 	if err != nil {
@@ -31,4 +37,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func loggerInit() (*zap.SugaredLogger, error) {
+	zl, err := zap.NewProduction()
+	if err != nil {
+		return nil, fmt.Errorf("loggerInit: %w", err)
+	}
+	return zl.Sugar(), nil
 }

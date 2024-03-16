@@ -56,7 +56,12 @@ func easyjsonDfc1bcb3EncodeGithubComDmad1989GophermartInternalJsonobject(out *jw
 	_ = first
 	{
 		const prefix string = ",\"login\":"
-		out.RawString(prefix[1:])
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
 		out.String(string(in.Login))
 	}
 	{
