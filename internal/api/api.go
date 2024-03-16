@@ -12,17 +12,25 @@ import (
 )
 
 type App interface{}
-
-type api struct {
-	app        App
-	accrualURL string
-	router     *chi.Mux
+type Auth interface {
+	LoginHandler(http.ResponseWriter, *http.Request)
+	RegisterHandler(http.ResponseWriter, *http.Request)
+	CheckMiddleware(h http.Handler) http.Handler
 }
 
-func New(ctx context.Context, app App, accrualURL string) *api {
+type api struct {
+	router *chi.Mux
+
+	app        App
+	auth       Auth
+	accrualURL string
+}
+
+func New(ctx context.Context, app App, accrualURL string, auth Auth) *api {
 	api := &api{
 		app:        app,
 		router:     chi.NewRouter(),
+		auth:       auth,
 		accrualURL: accrualURL}
 	api.initRouter()
 	return api
@@ -32,11 +40,11 @@ func (a api) initRouter() {
 	a.router.Use(middleware.Logger, middleware.Recoverer) // todo auth, gzip
 	a.router.Get("/ok", a.simpleHandler)
 	a.router.Route("/api/user", func(r chi.Router) {
-		r.Post("/register", a.registerHandler)
-		r.Post("/login", a.authHandler)
+		r.Post("/register", a.auth.RegisterHandler)
+		r.Post("/login", a.auth.LoginHandler)
 		r.Group(
 			func(r chi.Router) {
-				r.Use(a.authCheckMiddleware)
+				r.Use(a.auth.CheckMiddleware)
 				r.Post("/orders", a.postOrdersHandler)
 				r.Get("/orders", a.getOrdersHandler)
 				r.Get("/balance", a.balanceHandler)

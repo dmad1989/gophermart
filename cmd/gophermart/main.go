@@ -9,6 +9,7 @@ import (
 
 	"github.com/dmad1989/gophermart/internal/api"
 	"github.com/dmad1989/gophermart/internal/app"
+	"github.com/dmad1989/gophermart/internal/auth"
 	"github.com/dmad1989/gophermart/internal/config"
 	"github.com/dmad1989/gophermart/internal/db"
 )
@@ -22,8 +23,8 @@ func main() {
 	}
 	defer db.Close()
 	app := app.New(ctx, db)
-
-	api := api.New(ctx, app, conf.AccrualURL)
+	auth := auth.New(ctx, db)
+	api := api.New(ctx, app, conf.AccrualURL, auth)
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	err = api.SeverStart(ctx, conf.ApiURL)
