@@ -65,10 +65,6 @@ func (db *DB) Close() error {
 func (db *DB) CreateUser(ctx context.Context, user jsonobject.User) (int, error) {
 	tctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	db.logger.Infow("Creating user",
-		zap.String("login", user.Login),
-		zap.String("password", user.Password),
-		zap.ByteString("hashed", user.HashPassword))
 	id := []int{}
 	//Сделано через select так как exec возваращает sql.Result, у него есть lastInserted - но это не поддерживается в Postgres
 	err := db.conn.SelectContext(tctx, &id, sqlInsertUser, user.Login, user.HashPassword)
