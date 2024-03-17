@@ -94,7 +94,7 @@ func (a auth) LoginHandler(res http.ResponseWriter, req *http.Request) {
 	// проверяем пользователя
 	userDB, err := a.db.GetUserByLogin(req.Context(), user.Login)
 	if err != nil {
-		errorResponse(res, http.StatusUnauthorized, fmt.Errorf("check user in DB: %w", err))
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("check user in DB: %w", err))
 		return
 	}
 	// проверяем пароль
@@ -159,7 +159,7 @@ func getUserFromRequest(req *http.Request) (jsonobject.User, error) {
 		return user, fmt.Errorf("reading request body: %w", err)
 	}
 	if err := user.UnmarshalJSON(body); err != nil {
-		return user, fmt.Errorf("cutterJsonHandler: decoding request: %w", err)
+		return user, fmt.Errorf("decoding request: %w", err)
 	}
 	if user.Login == "" {
 		return user, ErrorRequestLogin
@@ -167,7 +167,6 @@ func getUserFromRequest(req *http.Request) (jsonobject.User, error) {
 	if user.Password == "" {
 		return user, ErrorRequestPassword
 	}
-	// todo check not empty?
 	return user, nil
 }
 
