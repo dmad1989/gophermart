@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -249,6 +250,8 @@ func TestLoginHandler(t *testing.T) {
 
 	mDB := mocks.NewMockDB(ctrl)
 
+	pass := sha256.Sum256([]byte("hit"))
+
 	tests := []struct {
 		name       string
 		request    postRequest
@@ -335,22 +338,70 @@ func TestLoginHandler(t *testing.T) {
 				callTimes: 0,
 			},
 		},
-		// { smth wrong here
-		// 	name: "negative - DB custom error",
-		// 	request: postRequest{
-		// 		jsonHeader: true,
-		// 		body:       strings.NewReader(okReqBody),
-		// 	},
-		// 	expResp: expectedPostResponse{
-		// 		code:         http.StatusInternalServerError,
-		// 		errorMessage: "check user in DB: custom error",
-		// 	},
-		// 	mockParams: getUserMockParams{
-		// 		resUser:   jsonobject.User{},
-		// 		resErr:    errors.New("custom error"),
-		// 		callTimes: 1,
-		// 	},
-		// },
+		{
+			name: "negative - DB custom error",
+			request: postRequest{
+				jsonHeader: true,
+				body:       strings.NewReader(okReqBody),
+			},
+			expResp: expectedPostResponse{
+				code:         http.StatusInternalServerError,
+				errorMessage: "check user in DB: custom error",
+			},
+			mockParams: getUserMockParams{
+				resUser:   jsonobject.User{},
+				resErr:    errors.New("custom error"),
+				callTimes: 1,
+			},
+		},
+		{
+			name: "negative - wrong pass",
+			request: postRequest{
+				jsonHeader: true,
+				body:       strings.NewReader(okReqBody),
+			},
+			expResp: expectedPostResponse{
+				code:         http.StatusUnauthorized,
+				errorMessage: ErrorUserPassword.Error(),
+			},
+			mockParams: getUserMockParams{
+				resUser:   jsonobject.User{Login: "wip", HashPassword: []byte{}},
+				resErr:    nil,
+				callTimes: 1,
+			},
+		},
+		{
+			name: "negative - generate token",
+			request: postRequest{
+				jsonHeader: true,
+				body:       strings.NewReader(okReqBody),
+			},
+			expResp: expectedPostResponse{
+				code:         http.StatusInternalServerError,
+				errorMessage: "generating token: generateToken: user id is 0",
+			},
+			mockParams: getUserMockParams{
+				resUser:   jsonobject.User{ID: 0, Login: "hit", HashPassword: pass[:]},
+				resErr:    nil,
+				callTimes: 1,
+			},
+		},
+		{
+			name: "positive",
+			request: postRequest{
+				jsonHeader: true,
+				body:       strings.NewReader(okReqBody),
+			},
+			expResp: expectedPostResponse{
+				code:         http.StatusOK,
+				errorMessage: "",
+			},
+			mockParams: getUserMockParams{
+				resUser:   jsonobject.User{ID: 1, Login: "hit", HashPassword: pass[:]},
+				resErr:    nil,
+				callTimes: 1,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -362,7 +413,7 @@ func TestLoginHandler(t *testing.T) {
 			a := New(ctx, mDB)
 
 			w := httptest.NewRecorder()
-			a.RegisterHandler(w, req)
+			a.LoginHandler(w, req)
 			res := w.Result()
 
 			assert.Equal(t, tt.expResp.code, res.StatusCode, "statusCode mismatch")
@@ -372,6 +423,17 @@ func TestLoginHandler(t *testing.T) {
 			err = res.Body.Close()
 			require.NoError(t, err)
 			assert.Equal(t, tt.expResp.errorMessage, string(resBody))
+
+			if res.StatusCode == http.StatusOK {
+				tokenInCookie := false
+				for _, c := range res.Cookies() {
+					if c.Name == "token" {
+						tokenInCookie = true
+						break
+					}
+				}
+				assert.True(t, tokenInCookie, "no cookie in response")
+			}
 		})
 	}
 }

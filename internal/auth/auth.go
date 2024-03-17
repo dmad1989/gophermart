@@ -88,7 +88,7 @@ func (a auth) RegisterHandler(res http.ResponseWriter, req *http.Request) {
 func (a auth) LoginHandler(res http.ResponseWriter, req *http.Request) {
 	user, err := getUserFromRequest(req)
 	if err != nil {
-		errorResponse(res, http.StatusBadRequest, fmt.Errorf("check user in DB: %w", err))
+		errorResponse(res, http.StatusBadRequest, err)
 		return
 	}
 	// проверяем пользователя
@@ -107,7 +107,7 @@ func (a auth) LoginHandler(res http.ResponseWriter, req *http.Request) {
 	// генерируем токен
 	token, err := generateToken(userDB.ID)
 	if err != nil {
-		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("generating token:  %w", err))
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("generating token: %w", err))
 		return
 	}
 	cookie := http.Cookie{
