@@ -12,6 +12,8 @@ import (
 	"github.com/dmad1989/gophermart/internal/auth"
 	"github.com/dmad1989/gophermart/internal/config"
 	"github.com/dmad1989/gophermart/internal/db"
+	"github.com/dmad1989/gophermart/internal/gzipapi"
+	"github.com/dmad1989/gophermart/internal/wallet"
 	"go.uber.org/zap"
 )
 
@@ -28,9 +30,14 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	app := app.New(ctx, db)
-	auth := auth.New(ctx, db)
-	api := api.New(ctx, app, conf.AccrualURL, auth)
+	api := api.New(
+		ctx,
+		auth.New(ctx, db),
+		gzipapi.New(ctx),
+		wallet.New(
+			ctx,
+			app.New(ctx, db)))
+
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	err = api.SeverStart(ctx, conf.ApiURL)

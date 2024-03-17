@@ -6,39 +6,51 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/dmad1989/gophermart/internal/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
-type App interface{}
+type Wallet interface {
+	PostOrdersHandler(res http.ResponseWriter, req *http.Request)
+	GetOrdersHandler(res http.ResponseWriter, req *http.Request)
+	BalanceHandler(res http.ResponseWriter, req *http.Request)
+	WithdrawHandler(res http.ResponseWriter, req *http.Request)
+	AllWithdrawalsHandler(res http.ResponseWriter, req *http.Request)
+}
 type Auth interface {
 	LoginHandler(http.ResponseWriter, *http.Request)
 	RegisterHandler(http.ResponseWriter, *http.Request)
 	CheckMiddleware(h http.Handler) http.Handler
 }
-
-type api struct {
-	router *chi.Mux
-
-	app        App
-	auth       Auth
-	accrualURL string
+type GzipApi interface {
+	Middleware(h http.Handler) http.Handler
 }
 
-func New(ctx context.Context, app App, accrualURL string, auth Auth) *api {
+type api struct {
+	logger *zap.SugaredLogger
+	router *chi.Mux
+	auth   Auth
+	gzip   GzipApi
+	wallet Wallet
+}
+
+func New(ctx context.Context, auth Auth, gzip GzipApi, wallet Wallet) *api {
 	api := &api{
-		app:        app,
-		router:     chi.NewRouter(),
-		auth:       auth,
-		accrualURL: accrualURL}
+		router: chi.NewRouter(),
+		auth:   auth,
+		gzip:   gzip,
+		wallet: wallet,
+		logger: ctx.Value(config.LoggerCtxKey).(*zap.SugaredLogger),
+	}
 	api.initRouter()
 	return api
 }
 
 func (a api) initRouter() {
-	a.router.Use(middleware.Logger, middleware.Recoverer) // todo auth, gzip
-	// a.router.Get("/ok", a.simpleHandler)
+	a.router.Use(middleware.Logger, middleware.Recoverer, a.gzip.Middleware)
 	a.router.Route("/api/user", func(r chi.Router) {
 		r.Post("/register", a.auth.RegisterHandler)
 		r.Post("/login", a.auth.LoginHandler)
@@ -46,14 +58,13 @@ func (a api) initRouter() {
 			func(r chi.Router) {
 				r.Use(a.auth.CheckMiddleware)
 				r.Get("/ok", a.simpleHandler)
-				r.Post("/orders", a.postOrdersHandler)
-				r.Get("/orders", a.getOrdersHandler)
-				r.Get("/balance", a.balanceHandler)
-				r.Post("/balance/withdraw", a.withdrawHandler)
-				r.Get("/withdrawals", a.allWithdrawalsHandler)
+				r.Post("/orders", a.wallet.PostOrdersHandler)
+				r.Get("/orders", a.wallet.GetOrdersHandler)
+				r.Get("/balance", a.wallet.BalanceHandler)
+				r.Post("/balance/withdraw", a.wallet.WithdrawHandler)
+				r.Get("/withdrawals", a.wallet.AllWithdrawalsHandler)
 			})
 	})
-
 }
 
 func (a api) simpleHandler(res http.ResponseWriter, req *http.Request) {
@@ -61,8 +72,8 @@ func (a api) simpleHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func (a api) SeverStart(ctx context.Context, apiURL string) error {
-	// defer logging.Log.Sync()
-	// logging.Log.Infof("Server started at %s", apiURL)
+	defer a.logger.Sync()
+	a.logger.Infof("Server started at %s", apiURL)
 	httpServer := &http.Server{
 		Addr:    apiURL,
 		Handler: a.router,
@@ -87,24 +98,4 @@ func (a api) SeverStart(ctx context.Context, apiURL string) error {
 		fmt.Printf("exit reason: %s \n", err)
 	}
 	return nil
-}
-
-func (a api) postOrdersHandler(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusOK)
-}
-
-func (a api) getOrdersHandler(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusOK)
-}
-
-func (a api) balanceHandler(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusOK)
-}
-
-func (a api) withdrawHandler(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusOK)
-}
-
-func (a api) allWithdrawalsHandler(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusOK)
 }
