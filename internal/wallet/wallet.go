@@ -2,12 +2,13 @@ package wallet
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
+	"github.com/dmad1989/gophermart/internal/app"
 	"github.com/dmad1989/gophermart/internal/config"
 	"go.uber.org/zap"
 )
@@ -18,7 +19,7 @@ var (
 )
 
 type App interface {
-	CreateOrder(ctx context.Context, orderNum uint64) error
+	CreateOrder(ctx context.Context, orderNum int) error
 }
 
 type wallet struct {
@@ -46,29 +47,31 @@ func (w wallet) PostOrdersHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = w.app.CreateOrder(req.Context(), binary.BigEndian.Uint64(body))
+	orderNum, err := strconv.Atoi(string(body))
+	if len(body) <= 0 {
+		errorResponse(res, http.StatusBadRequest, fmt.Errorf("converting body to int: %w", err))
+		return
+	}
 
-	// if err == "номер заказа уже был загружен этим пользователем;" {
-	// errorResponse(res, http.StatusOK, ErrorRequestContentType)
-	// res.WriteHeader(http.StatusOK)
-	// res.Write([]byte("номер заказа уже был загружен этим пользователем"))
-	// return
-	// }
-	// if err == "неверный формат номера заказа;" {
-	// res.WriteHeader(http.StatusUnprocessableEntity)
-	// res.Write([]byte("неверный формат номера заказа"))
-	// return
-	// }
-	// if err == "номер заказа уже был загружен другим пользователем;" {
-	// res.WriteHeader(http.StatusConflict)
-	// res.Write([]byte("неверный формат номера заказа"))
-	// return
-	// }
+	err = w.app.CreateOrder(req.Context(), orderNum)
+
+	if errors.Is(err, app.ErrorOrderUnique) {
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte(err.Error()))
+		return
+	}
+	if errors.Is(err, app.ErrorFromatNumber) {
+		errorResponse(res, http.StatusUnprocessableEntity, fmt.Errorf("post order: %w", err))
+		return
+	}
+	if errors.Is(err, app.ErrorOrderAuthor) {
+		errorResponse(res, http.StatusConflict, fmt.Errorf("post order: %w", err))
+		return
+	}
 	if err != nil {
 		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("create order: %w", err))
 		return
 	}
-
 	res.WriteHeader(http.StatusAccepted)
 }
 

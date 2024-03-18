@@ -77,7 +77,7 @@ func (db *DB) CreateUser(ctx context.Context, user jsonobject.User) (int, error)
 	//Сделано через select так как exec возваращает sql.Result, у него есть lastInserted - но это не поддерживается в Postgres
 	err := db.conn.SelectContext(tctx, &id, sqlInsertUser, user.Login, user.HashPassword)
 	if err != nil {
-		return 0, fmt.Errorf("insert user: %w", err)
+		return 0, fmt.Errorf("db (CreateUser): %w", err)
 	}
 	return id[0], nil
 }
@@ -88,32 +88,32 @@ func (db *DB) GetUserByLogin(ctx context.Context, login string) (jsonobject.User
 	user := jsonobject.User{}
 	err := db.conn.GetContext(tctx, &user, sqlUserByLogin, login)
 	if err != nil {
-		return jsonobject.User{}, fmt.Errorf("db: GetUserByLogin: %w", err)
+		return jsonobject.User{}, fmt.Errorf("db (GetUserByLogin): %w", err)
 	}
 	return user, nil
 }
 
-func (db *DB) CreateOrder(ctx context.Context, orderNum uint64) error {
+func (db *DB) CreateOrder(ctx context.Context, orderNum int) error {
 	userID := ctx.Value(config.UserCtxKey)
 	if userID == "" {
-		return errors.New("db: createOrder: no user in context")
+		return errors.New("db (createOrder): no user in context")
 	}
 	tctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	_, err := db.conn.ExecContext(tctx, sqlInsertOrder, orderNum, userID)
 	if err != nil {
-		return fmt.Errorf("db: createOrder: %w", err)
+		return fmt.Errorf("db (createOrder): %w", err)
 	}
 	return nil
 }
 
-func (db *DB) GetOrderAuthor(ctx context.Context, orderNum uint64) (int, error) {
+func (db *DB) GetOrderAuthor(ctx context.Context, orderNum int) (int, error) {
 	tctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	authorId := 0
-	err := db.conn.SelectContext(tctx, &authorId, sqlCheckOrderAuthor, orderNum)
+	err := db.conn.GetContext(tctx, &authorId, sqlCheckOrderAuthor, orderNum)
 	if err != nil {
-		return 0, fmt.Errorf("db: getOrderAuthor: %w", err)
+		return 0, fmt.Errorf("db (getOrderAuthor): %w", err)
 	}
 	return authorId, nil
 }
