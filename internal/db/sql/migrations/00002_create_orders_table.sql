@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.orders
     userid bigint NOT NULL,
     "uploadDate" timestamp with time zone NOT NULL DEFAULT now(),
     "statusId" bigint NOT NULL DEFAULT 1,
-    accrual bigint,
+    accrual numeric(10,2),
     CONSTRAINT "PK_ID" PRIMARY KEY ("ID"),
     CONSTRAINT "UK_NUMBER" UNIQUE ("number"),
     CONSTRAINT "FK_USERID" FOREIGN KEY (userid)

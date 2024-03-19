@@ -25,3 +25,10 @@ type Order struct {
 	UploadDateDB time.Time      `json:"-" db:"uploadDate"`
 	UploadDate   string         `json:"uploaded_at" db:"-"`
 }
+
+type Balance struct {
+	AccrualDB      sql.NullFloat64 `json:"-" db:"ACCRUAL"`
+	AccrualCurrent float64         `json:"current" db:"-"`
+	WithdrawnDB    sql.NullFloat64 `json:"-" db:"WITHDRAWN"`
+	Withdrawn      float64         `json:"withdrawn" db:"-"`
+}

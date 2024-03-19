@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.withdrawls
 (
     "ID" bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 100000000 ),
     "orderNum" bigint,
-    "pointsSum" bigint,
+    "pointsSum"  numeric(10,2),
     "processedDate" date,
     userid bigint,
     CONSTRAINT "PK_ID_WITHDRAWLS" PRIMARY KEY ("ID"),

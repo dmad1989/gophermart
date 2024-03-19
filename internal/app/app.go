@@ -21,6 +21,7 @@ type DB interface {
 	CreateOrder(ctx context.Context, orderNum int) error
 	GetOrderAuthor(ctx context.Context, orderNum int) (int, error)
 	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
+	GetUserBalance(ctx context.Context) (jsonobject.Balance, error)
 }
 
 type App struct {
@@ -81,4 +82,26 @@ func checksum(num int) int {
 
 func (a App) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
 	return a.db.GetOrdersByUser(ctx)
+}
+
+func (a App) GetUserBalance(ctx context.Context) (b jsonobject.Balance, err error) {
+	b, err = a.db.GetUserBalance(ctx)
+	if err != nil {
+		return b, fmt.Errorf("app:  %w", err)
+	}
+
+	if b.WithdrawnDB.Valid {
+		b.Withdrawn = b.WithdrawnDB.Float64
+	}
+
+	if b.AccrualDB.Valid {
+		b.AccrualCurrent = b.AccrualDB.Float64 - b.Withdrawn
+	}
+
+	if b.AccrualCurrent < 0 {
+		return jsonobject.Balance{}, errors.New("минусовой баланс счета")
+	}
+
+	return
+
 }

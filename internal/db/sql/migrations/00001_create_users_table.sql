@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS public.users
     "ID" bigint  NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 1000000 ),
     login text NOT NULL,
     password bytea NOT NULL,
-    pointsCurrent bigint,
-    pointWithdrawn bigint,
+    "pointsCounted" bigint DEFAULT 0,
+    "pointWithdrawn" bigint DEFAULT 0,
     CONSTRAINT "PK_USER" PRIMARY KEY ("ID"),
     CONSTRAINT "UK_LOGIN" UNIQUE (login)
 );

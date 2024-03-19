@@ -36,6 +36,9 @@ var (
 
 	//go:embed sql/getOrdersByUser.sql
 	sqlOrdersByUsers string
+
+	//go:embed sql/getBalance.sql
+	sqlGetBalance string
 )
 
 type DB struct {
@@ -146,6 +149,21 @@ func (db *DB) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
 		}
 
 		res = append(res, order)
+	}
+	return res, nil
+}
+
+func (db *DB) GetUserBalance(ctx context.Context) (jsonobject.Balance, error) {
+	res := jsonobject.Balance{}
+	userID := ctx.Value(config.UserCtxKey)
+	if userID == "" {
+		return res, errors.New("db (getUserBalance): no user in context")
+	}
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	err := db.conn.GetContext(tctx, &res, sqlGetBalance, userID)
+	if err != nil {
+		return res, fmt.Errorf("db (getUserBalance) GetContext: %w", err)
 	}
 	return res, nil
 }
