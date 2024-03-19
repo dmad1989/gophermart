@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/dmad1989/gophermart/internal/config"
+	"github.com/dmad1989/gophermart/internal/jsonobject"
 )
 
 var (
@@ -19,6 +20,7 @@ type DB interface {
 	Close() error
 	CreateOrder(ctx context.Context, orderNum int) error
 	GetOrderAuthor(ctx context.Context, orderNum int) (int, error)
+	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
 }
 
 type App struct {
@@ -75,4 +77,8 @@ func checksum(num int) int {
 		num = num / 10
 	}
 	return luhn % 10
+}
+
+func (a App) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
+	return a.db.GetOrdersByUser(ctx)
 }

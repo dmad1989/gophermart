@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS public.orders
     "ID" bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 100000000 ),
     "number" bigint NOT NULL,
     userid bigint NOT NULL,
-    "uploadDate" date NOT NULL DEFAULT CURRENT_DATE ,
+    "uploadDate" timestamp with time zone NOT NULL DEFAULT now(),
     "statusId" bigint NOT NULL DEFAULT 1,
     accrual bigint,
     CONSTRAINT "PK_ID" PRIMARY KEY ("ID"),

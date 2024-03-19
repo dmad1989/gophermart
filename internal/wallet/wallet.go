@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -10,16 +11,19 @@ import (
 
 	"github.com/dmad1989/gophermart/internal/app"
 	"github.com/dmad1989/gophermart/internal/config"
+	"github.com/dmad1989/gophermart/internal/jsonobject"
 	"go.uber.org/zap"
 )
 
 var (
-	ErrorRequestContentType = errors.New("wrong content-type")
-	ErrorRequestEmptyBody   = errors.New("empty body not expected")
+	ErrorRequestContentType   = errors.New("wrong content-type")
+	ErrorRequestEmptyBody     = errors.New("empty body not expected")
+	ErrorRequestContextNoUser = errors.New("no user in context")
 )
 
 type App interface {
 	CreateOrder(ctx context.Context, orderNum int) error
+	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
 }
 
 type wallet struct {
@@ -76,8 +80,32 @@ func (w wallet) PostOrdersHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func (w wallet) GetOrdersHandler(res http.ResponseWriter, req *http.Request) {
-	// req.Cookies()
+	userID := req.Context().Value(config.UserCtxKey)
+	if userID == nil || userID == 0 {
+		errorResponse(res, http.StatusUnauthorized, ErrorRequestContextNoUser)
+		return
+	}
+	orders, err := w.app.GetOrdersByUser(req.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			res.WriteHeader(http.StatusNoContent)
+			return
+		}
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("getOrders: %w", err))
+		return
+	}
+	if len(orders) == 0 {
+		res.WriteHeader(http.StatusNoContent)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
+	ordersJson, err := orders.MarshalJSON()
+	if err != nil {
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("getOrders: encoding response: %w", err))
+		return
+	}
+	res.Write(ordersJson)
 }
 
 func (w wallet) BalanceHandler(res http.ResponseWriter, req *http.Request) {

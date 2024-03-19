@@ -33,6 +33,9 @@ var (
 
 	//go:embed sql/getOrderAuthor.sql
 	sqlCheckOrderAuthor string
+
+	//go:embed sql/getOrdersByUser.sql
+	sqlOrdersByUsers string
 )
 
 type DB struct {
@@ -116,4 +119,33 @@ func (db *DB) GetOrderAuthor(ctx context.Context, orderNum int) (int, error) {
 		return 0, fmt.Errorf("db (getOrderAuthor): %w", err)
 	}
 	return authorId, nil
+}
+
+func (db *DB) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
+	res := jsonobject.Orders{}
+	userID := ctx.Value(config.UserCtxKey)
+	if userID == "" {
+		return res, errors.New("db (GetOrdersByUser): no user in context")
+	}
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	rows, err := db.conn.QueryxContext(tctx, sqlOrdersByUsers, userID)
+	if err != nil {
+		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext %w", err)
+	}
+
+	for rows.Next() {
+		order := jsonobject.Order{}
+		err := rows.StructScan(&order)
+		if err != nil {
+			return jsonobject.Orders{}, fmt.Errorf("db (GetOrdersByUser): parsing rows %w", err)
+		}
+		order.UploadDate = order.UploadDateDB.Format(time.RFC3339)
+		if order.AccrualDB.Valid {
+			order.Accrual = order.AccrualDB.String
+		}
+
+		res = append(res, order)
+	}
+	return res, nil
 }
