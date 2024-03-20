@@ -35,9 +35,12 @@ type Balance struct {
 }
 
 //easyjson:json
+type Withdrawls []Withdraw
+
+//easyjson:json
 type Withdraw struct {
-	Order           string    `json:"order" db:"orderNum"`
-	OrderNum        int       `json:"-" db:"orderNum"`
+	Order           string    `json:"order" db:"ordernum"`
+	OrderNum        int       `json:"-" db:"-"`
 	Sum             float64   `json:"sum" db:"pointsSum"`
 	ProcessedDateDB time.Time `json:"-" db:"processedDate"`
 	ProcessedDate   string    `json:"processed_at,omitempty" db:"-"`

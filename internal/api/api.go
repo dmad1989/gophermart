@@ -18,7 +18,7 @@ type Wallet interface {
 	GetOrdersHandler(res http.ResponseWriter, req *http.Request)
 	BalanceHandler(res http.ResponseWriter, req *http.Request)
 	WithdrawHandler(res http.ResponseWriter, req *http.Request)
-	AllWithdrawalsHandler(res http.ResponseWriter, req *http.Request)
+	GetWithdrawalsHandler(res http.ResponseWriter, req *http.Request)
 }
 type Auth interface {
 	LoginHandler(http.ResponseWriter, *http.Request)
@@ -62,7 +62,7 @@ func (a api) initRouter() {
 				r.Get("/orders", a.wallet.GetOrdersHandler)
 				r.Get("/balance", a.wallet.BalanceHandler)
 				r.Post("/balance/withdraw", a.wallet.WithdrawHandler)
-				r.Get("/withdrawals", a.wallet.AllWithdrawalsHandler)
+				r.Get("/withdrawals", a.wallet.GetWithdrawalsHandler)
 			})
 	})
 }

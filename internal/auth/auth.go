@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -94,6 +95,10 @@ func (a auth) LoginHandler(res http.ResponseWriter, req *http.Request) {
 	// проверяем пользователя
 	userDB, err := a.db.GetUserByLogin(req.Context(), user.Login)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			errorResponse(res, http.StatusUnauthorized, errors.New("no user for this password"))
+			return
+		}
 		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("check user in DB: %w", err))
 		return
 	}

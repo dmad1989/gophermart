@@ -26,6 +26,7 @@ type App interface {
 	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
 	GetUserBalance(ctx context.Context) (jsonobject.Balance, error)
 	CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error
+	GetWithdrawlsByUser(ctx context.Context) (jsonobject.Withdrawls, error)
 }
 
 type wallet struct {
@@ -182,9 +183,33 @@ func (w wallet) WithdrawHandler(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 }
 
-func (w wallet) AllWithdrawalsHandler(res http.ResponseWriter, req *http.Request) {
-	// req.Cookies()
+func (w wallet) GetWithdrawalsHandler(res http.ResponseWriter, req *http.Request) {
+	userID := req.Context().Value(config.UserCtxKey)
+	if userID == nil || userID == 0 {
+		errorResponse(res, http.StatusUnauthorized, ErrorRequestContextNoUser)
+		return
+	}
+	withdrawals, err := w.app.GetWithdrawlsByUser(req.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			res.WriteHeader(http.StatusNoContent)
+			return
+		}
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("getWithdrawals: %w", err))
+		return
+	}
+	if len(withdrawals) == 0 {
+		res.WriteHeader(http.StatusNoContent)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
+	withdrawalsJson, err := withdrawals.MarshalJSON()
+	if err != nil {
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("getWithdrawals: encoding response: %w", err))
+		return
+	}
+	res.Write(withdrawalsJson)
 }
 
 func errorResponse(res http.ResponseWriter, status int, err error) {

@@ -43,6 +43,9 @@ var (
 
 	//go:embed sql/insertWithdraw.sql
 	sqlInsertWithdraw string
+
+	//go:embed sql/getWithdrawlsByUser.sql
+	sqlWithdrawlsByUser string
 )
 
 type DB struct {
@@ -187,4 +190,29 @@ func (db *DB) CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error {
 		return fmt.Errorf("db (CreateWithdraw): %w", err)
 	}
 	return nil
+}
+
+func (db *DB) GetWithdrawlsByUser(ctx context.Context) (jsonobject.Withdrawls, error) {
+	res := jsonobject.Withdrawls{}
+	userID := ctx.Value(config.UserCtxKey)
+	if userID == "" {
+		return res, errors.New("db (GetWithdrawlsByUser): no user in context")
+	}
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	rows, err := db.conn.QueryxContext(tctx, sqlWithdrawlsByUser, userID)
+	if err != nil {
+		return res, fmt.Errorf("db (GetWithdrawlsByUser): QueryxContext %w", err)
+	}
+
+	for rows.Next() {
+		withdraw := jsonobject.Withdraw{}
+		err := rows.StructScan(&withdraw)
+		if err != nil {
+			return jsonobject.Withdrawls{}, fmt.Errorf("db (GetWithdrawlsByUser): parsing rows %w", err)
+		}
+		withdraw.ProcessedDate = withdraw.ProcessedDateDB.Format(time.RFC3339)
+		res = append(res, withdraw)
+	}
+	return res, nil
 }

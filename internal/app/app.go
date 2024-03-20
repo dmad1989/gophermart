@@ -24,6 +24,7 @@ type DB interface {
 	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
 	GetUserBalance(ctx context.Context) (jsonobject.Balance, error)
 	CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error
+	GetWithdrawlsByUser(ctx context.Context) (jsonobject.Withdrawls, error)
 }
 
 type App struct {
@@ -135,4 +136,8 @@ func (a App) CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error {
 		return fmt.Errorf("app (CreateWithdraw): %w ", err)
 	}
 	return nil
+}
+
+func (a App) GetWithdrawlsByUser(ctx context.Context) (jsonobject.Withdrawls, error) {
+	return a.db.GetWithdrawlsByUser(ctx)
 }
