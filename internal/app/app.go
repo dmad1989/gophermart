@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	ErrorFromatNumber = errors.New("неверный формат номера заказа")
-	ErrorOrderAuthor  = errors.New("заказ с таким же номером уже загружен другим пользователем")
-	ErrorOrderUnique  = errors.New("заказ с таким же номером уже загружен")
+	ErrorFromatNumber    = errors.New("неверный формат номера заказа")
+	ErrorOrderAuthor     = errors.New("заказ с таким же номером уже загружен другим пользователем")
+	ErrorOrderUnique     = errors.New("заказ с таким же номером уже загружен")
+	ErrorNotEnoughPoints = errors.New("недостаточно баллов для списания")
 )
 
 type DB interface {
@@ -22,6 +23,7 @@ type DB interface {
 	GetOrderAuthor(ctx context.Context, orderNum int) (int, error)
 	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
 	GetUserBalance(ctx context.Context) (jsonobject.Balance, error)
+	CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error
 }
 
 type App struct {
@@ -112,4 +114,25 @@ func getValidValue(num sql.NullFloat64) float64 {
 		res = num.Float64
 	}
 	return res
+}
+
+func (a App) CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error {
+	if !validateNumber(w.OrderNum) {
+		return fmt.Errorf("app (CreateWithdraw): %w ", ErrorFromatNumber)
+	}
+
+	balance, err := a.GetUserBalance(ctx)
+	if err != nil {
+		return fmt.Errorf("app (CreateWithdraw): %w", err)
+	}
+
+	if balance.AccrualCurrent-w.Sum < 0 {
+		return ErrorNotEnoughPoints
+	}
+
+	err = a.db.CreateWithdraw(ctx, w)
+	if err != nil {
+		return fmt.Errorf("app (CreateWithdraw): %w ", err)
+	}
+	return nil
 }

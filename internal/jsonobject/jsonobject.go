@@ -33,3 +33,12 @@ type Balance struct {
 	WithdrawnDB    sql.NullFloat64 `json:"-" db:"withdrawn"`
 	Withdrawn      float64         `json:"withdrawn" db:"-"`
 }
+
+//easyjson:json
+type Withdraw struct {
+	Order           string    `json:"order" db:"orderNum"`
+	OrderNum        int       `json:"-" db:"orderNum"`
+	Sum             float64   `json:"sum" db:"pointsSum"`
+	ProcessedDateDB time.Time `json:"-" db:"processedDate"`
+	ProcessedDate   string    `json:"processed_at,omitempty" db:"-"`
+}

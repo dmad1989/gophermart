@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
@@ -39,6 +40,9 @@ var (
 
 	//go:embed sql/getBalance.sql
 	sqlGetBalance string
+
+	//go:embed sql/insertWithdraw.sql
+	sqlInsertWithdraw string
 )
 
 type DB struct {
@@ -163,7 +167,24 @@ func (db *DB) GetUserBalance(ctx context.Context) (jsonobject.Balance, error) {
 	defer cancel()
 	err := db.conn.GetContext(tctx, &res, sqlGetBalance, userID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return res, nil
+		}
 		return res, fmt.Errorf("db (getUserBalance) GetContext: %w", err)
 	}
 	return res, nil
+}
+
+func (db *DB) CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error {
+	userID := ctx.Value(config.UserCtxKey)
+	if userID == "" {
+		return errors.New("db (CreateWithdraw): no user in context")
+	}
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	_, err := db.conn.ExecContext(tctx, sqlInsertWithdraw, w.OrderNum, w.Sum, userID)
+	if err != nil {
+		return fmt.Errorf("db (CreateWithdraw): %w", err)
+	}
+	return nil
 }

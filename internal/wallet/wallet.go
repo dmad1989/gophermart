@@ -25,6 +25,7 @@ type App interface {
 	CreateOrder(ctx context.Context, orderNum int) error
 	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
 	GetUserBalance(ctx context.Context) (jsonobject.Balance, error)
+	CreateWithdraw(ctx context.Context, w jsonobject.Withdraw) error
 }
 
 type wallet struct {
@@ -53,7 +54,7 @@ func (w wallet) PostOrdersHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	orderNum, err := strconv.Atoi(string(body))
-	if len(body) <= 0 {
+	if err != nil {
 		errorResponse(res, http.StatusBadRequest, fmt.Errorf("converting body to int: %w", err))
 		return
 	}
@@ -132,7 +133,52 @@ func (w wallet) BalanceHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func (w wallet) WithdrawHandler(res http.ResponseWriter, req *http.Request) {
-	// req.Cookies()
+	userID := req.Context().Value(config.UserCtxKey)
+	if userID == nil || userID == 0 {
+		errorResponse(res, http.StatusUnauthorized, ErrorRequestContextNoUser)
+		return
+	}
+	var wdraw jsonobject.Withdraw
+	if req.Header.Get("Content-Type") != "application/json" {
+		errorResponse(res, http.StatusBadRequest, ErrorRequestContentType)
+		return
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		errorResponse(res, http.StatusBadRequest, fmt.Errorf("reading request body: %w", err))
+		return
+	}
+	if err := wdraw.UnmarshalJSON(body); err != nil {
+		errorResponse(res, http.StatusBadRequest, fmt.Errorf("decoding request: %w", err))
+		return
+	}
+
+	if wdraw.Order == "" || wdraw.Sum == 0 {
+		errorResponse(res, http.StatusBadRequest, ErrorRequestEmptyBody)
+		return
+	}
+
+	wdraw.OrderNum, err = strconv.Atoi(string(wdraw.Order))
+	if err != nil {
+		errorResponse(res, http.StatusBadRequest, fmt.Errorf("converting wdraw.Order to int: %w", err))
+		return
+	}
+
+	err = w.app.CreateWithdraw(req.Context(), wdraw)
+
+	if err != nil {
+		if errors.Is(err, app.ErrorFromatNumber) {
+			errorResponse(res, http.StatusUnprocessableEntity, fmt.Errorf("withdraw: %w", err))
+			return
+		}
+		if errors.Is(err, app.ErrorNotEnoughPoints) {
+			errorResponse(res, http.StatusPaymentRequired, fmt.Errorf("withdraw: %w", err))
+			return
+		}
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("withdraw: %w", err))
+		return
+	}
+
 	res.WriteHeader(http.StatusOK)
 }
 
