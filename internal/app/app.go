@@ -84,24 +84,32 @@ func (a App) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
 	return a.db.GetOrdersByUser(ctx)
 }
 
-func (a App) GetUserBalance(ctx context.Context) (b jsonobject.Balance, err error) {
-	b, err = a.db.GetUserBalance(ctx)
+func (a App) GetUserBalance(ctx context.Context) (jsonobject.Balance, error) {
+	b, err := a.db.GetUserBalance(ctx)
 	if err != nil {
-		return b, fmt.Errorf("app:  %w", err)
+		return jsonobject.Balance{}, fmt.Errorf("app (GetUserBalance):  %w", err)
 	}
 
-	if b.WithdrawnDB.Valid {
-		b.Withdrawn = b.WithdrawnDB.Float64
-	}
+	b.Withdrawn = getValidValue(b.WithdrawnDB)
+	b.AccrualCurrent = getValidValue(b.AccrualDB)
 
-	if b.AccrualDB.Valid {
-		b.AccrualCurrent = b.AccrualDB.Float64 - b.Withdrawn
+	if b.AccrualCurrent == 0 && b.Withdrawn > 0 {
+		return jsonobject.Balance{}, errors.New("app (GetUserBalance): нет начислений, но есть списания")
 	}
+	//AccrualDB хранит в себе все когда либо начисленные баллы, чтобы узнать актуальный баланс вычитаем
+	b.AccrualCurrent = b.AccrualDB.Float64 - b.Withdrawn
 
 	if b.AccrualCurrent < 0 {
-		return jsonobject.Balance{}, errors.New("минусовой баланс счета")
+		return jsonobject.Balance{}, errors.New("app (GetUserBalance): минусовой баланс счета")
 	}
 
-	return
+	return b, nil
+}
 
+func getValidValue(num sql.NullFloat64) float64 {
+	var res float64
+	if num.Valid {
+		res = num.Float64
+	}
+	return res
 }

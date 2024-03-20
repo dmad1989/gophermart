@@ -26,9 +26,10 @@ type Order struct {
 	UploadDate   string         `json:"uploaded_at" db:"-"`
 }
 
+//easyjson:json
 type Balance struct {
-	AccrualDB      sql.NullFloat64 `json:"-" db:"ACCRUAL"`
+	AccrualDB      sql.NullFloat64 `json:"-" db:"accrual"`
 	AccrualCurrent float64         `json:"current" db:"-"`
-	WithdrawnDB    sql.NullFloat64 `json:"-" db:"WITHDRAWN"`
+	WithdrawnDB    sql.NullFloat64 `json:"-" db:"withdrawn"`
 	Withdrawn      float64         `json:"withdrawn" db:"-"`
 }

@@ -24,6 +24,7 @@ var (
 type App interface {
 	CreateOrder(ctx context.Context, orderNum int) error
 	GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error)
+	GetUserBalance(ctx context.Context) (jsonobject.Balance, error)
 }
 
 type wallet struct {
@@ -109,7 +110,24 @@ func (w wallet) GetOrdersHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func (w wallet) BalanceHandler(res http.ResponseWriter, req *http.Request) {
-	// req.Cookies()
+	userID := req.Context().Value(config.UserCtxKey)
+	if userID == nil || userID == 0 {
+		errorResponse(res, http.StatusUnauthorized, ErrorRequestContextNoUser)
+		return
+	}
+	balance, err := w.app.GetUserBalance(req.Context())
+	if err != nil {
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("balanceHandler: %w", err))
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	balanceJson, err := balance.MarshalJSON()
+	if err != nil {
+		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("balanceHandler: encoding response: %w", err))
+		return
+	}
+	res.Write(balanceJson)
 	res.WriteHeader(http.StatusOK)
 }
 
