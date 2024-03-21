@@ -10,7 +10,9 @@ import (
 	"github.com/dmad1989/gophermart/internal/api"
 	"github.com/dmad1989/gophermart/internal/app"
 	"github.com/dmad1989/gophermart/internal/auth"
+	"github.com/dmad1989/gophermart/internal/client"
 	"github.com/dmad1989/gophermart/internal/config"
+	"github.com/dmad1989/gophermart/internal/conveyor"
 	"github.com/dmad1989/gophermart/internal/db"
 	"github.com/dmad1989/gophermart/internal/gzipapi"
 	"github.com/dmad1989/gophermart/internal/wallet"
@@ -37,9 +39,11 @@ func main() {
 		wallet.New(
 			ctx,
 			app.New(ctx, db)))
-
+	client := client.New(ctx, conf.AccrualURL)
+	conveyor.Start(ctx, client, db)
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
 	err = api.SeverStart(ctx, conf.ApiURL)
 	if err != nil {
 		panic(err)

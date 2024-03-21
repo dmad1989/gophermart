@@ -45,3 +45,9 @@ type Withdraw struct {
 	ProcessedDateDB time.Time `json:"-" db:"processedDate"`
 	ProcessedDate   string    `json:"processed_at,omitempty" db:"-"`
 }
+
+type AccrualResponse struct {
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float64 `json:"accrual"`
+}
