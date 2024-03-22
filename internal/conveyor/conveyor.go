@@ -47,12 +47,12 @@ func (c conveyor) doReapeat(ctx context.Context, tCh <-chan time.Time) {
 			c.logger.Infoln("worker done")
 			return
 		case <-tCh:
-			c.calcProcess(ctx)
+			c.CalcProcess(ctx)
 		}
 	}
 }
 
-func (c conveyor) calcProcess(ctx context.Context) {
+func (c conveyor) CalcProcess(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	c.logger.Infoln("worker in progress")
 	orders, err := c.db.GetOrdersForCalc(ctx)
@@ -65,6 +65,7 @@ func (c conveyor) calcProcess(ctx context.Context) {
 
 	var updOrders jsonobject.OrdersCalc
 	bCh := make(chan jsonobject.OrdersCalc)
+	defer close(bCh)
 	go func(ctx context.Context, bCh chan jsonobject.OrdersCalc) {
 		for b := range bCh {
 			c.logger.Infoln("step 3 processing")
@@ -80,6 +81,7 @@ func (c conveyor) calcProcess(ctx context.Context) {
 	start := 0
 
 	for i, order := range orders {
+		c.logger.Infoln(i)
 		if sleepTime > 0 {
 			time.Sleep(sleepTime)
 		}
@@ -89,12 +91,14 @@ func (c conveyor) calcProcess(ctx context.Context) {
 			switch {
 			case errors.Is(err, client.ErrorAccrualFatal):
 				cancel()
+				// close(bCh)
 				return
 			case errors.Is(err, client.ErrorAccrualOverLoad):
 				// если сервис перегружен добавляем задержки между вызывами
 				sleepTime = sleepTime + 1
 				tikerTimeout = tikerTimeout + time.Duration(len(orders))*sleepTime
 				cancel()
+				// close(bCh)
 				return
 			case errors.Is(err, client.ErrorAccrualUnknownOrder):
 				continue
@@ -116,5 +120,5 @@ func (c conveyor) calcProcess(ctx context.Context) {
 			start = len(updOrders)
 		}
 	}
-	close(bCh)
+	// close(bCh)
 }
