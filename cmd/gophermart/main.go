@@ -43,7 +43,7 @@ func main() {
 	conveyor.Start(ctx, client, db)
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
+	log.Infow("config for start", zap.String("AccrualURL", conf.AccrualURL), zap.String("ApiURL", conf.ApiURL), zap.String("DbConnName", conf.DbConnName))
 	err = api.SeverStart(ctx, conf.ApiURL)
 	if err != nil {
 		panic(err)

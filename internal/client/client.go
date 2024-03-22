@@ -12,7 +12,13 @@ import (
 	"go.uber.org/zap"
 )
 
-const URLPattern = "^http://%s/api/orders/%d"
+const URLPattern = "http://%s/api/orders/%d"
+
+var (
+	ErrorAccrualFatal        = errors.New("accrual service is unavailable")
+	ErrorAccrualUnknownOrder = errors.New("order not registed in accrual service")
+	ErrorAccrualOverLoad     = errors.New("accrual service is overload")
+)
 
 type client struct {
 	logger     *zap.SugaredLogger
@@ -35,8 +41,8 @@ func (c *client) DoRequestAccrual(ctx context.Context, orderNum int) (jsonobject
 	}
 
 	defer res.Body.Close()
-
-	if res.StatusCode == http.StatusOK {
+	switch res.StatusCode {
+	case http.StatusOK:
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return accRes, fmt.Errorf("accrual request: reading response body: %w", err)
@@ -45,10 +51,11 @@ func (c *client) DoRequestAccrual(ctx context.Context, orderNum int) (jsonobject
 			return accRes, fmt.Errorf("accrual request: decoding response: %w", err)
 		}
 		return accRes, nil
+	case http.StatusNoContent:
+		return accRes, ErrorAccrualUnknownOrder
+	case http.StatusTooManyRequests:
+		return accRes, ErrorAccrualOverLoad
+	default:
+		return accRes, ErrorAccrualFatal
 	}
-	return accRes, errors.New("response is not succsess")
-	// case http.StatusNoContent:
-	// case http.StatusTooManyRequests:
-	// case http.StatusInternalServerError:
-
 }
