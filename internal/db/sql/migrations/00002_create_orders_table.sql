@@ -28,6 +28,12 @@ CREATE INDEX IF NOT EXISTS "IDX_ORDER_USER"
     (userid ASC NULLS LAST)
     WITH (deduplicate_items=False)
     TABLESPACE pg_default;
+
+CREATE INDEX IF NOT EXISTS  "IDX_STATUSID"
+    ON public.orders USING btree
+    ("statusId" ASC NULLS LAST)
+    WITH (deduplicate_items=True)
+    TABLESPACE pg_default;
 -- +goose StatementEnd
 
 -- +goose Down

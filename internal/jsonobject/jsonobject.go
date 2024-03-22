@@ -46,8 +46,19 @@ type Withdraw struct {
 	ProcessedDate   string    `json:"processed_at,omitempty" db:"-"`
 }
 
+//easyjson:json
 type AccrualResponse struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`
 	Accrual float64 `json:"accrual"`
+}
+
+//easyjson:json
+type OrdersCalc []OrderCalc
+
+//easyjson:json
+type OrderCalc struct {
+	Number     int            `db:"number"`
+	CalcStatus sql.NullString `db:"calcstatus"`
+	Accrual    float64        `db:"accrual"`
 }

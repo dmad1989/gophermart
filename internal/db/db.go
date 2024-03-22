@@ -46,6 +46,12 @@ var (
 
 	//go:embed sql/getWithdrawlsByUser.sql
 	sqlWithdrawlsByUser string
+
+	//go:embed sql/getOrdersForCalc.sql
+	sqlGetOrdersForCalc string
+
+	//go:embed sql/updateOrders.sql
+	sqlUpdateOrders string
 )
 
 type DB struct {
@@ -215,4 +221,34 @@ func (db *DB) GetWithdrawlsByUser(ctx context.Context) (jsonobject.Withdrawls, e
 		res = append(res, withdraw)
 	}
 	return res, nil
+}
+
+func (db *DB) GetOrdersForCalc(ctx context.Context) (jsonobject.OrdersCalc, error) {
+	res := jsonobject.OrdersCalc{}
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	rows, err := db.conn.QueryxContext(tctx, sqlGetOrdersForCalc)
+	if err != nil {
+		return res, fmt.Errorf("db (GetOrdersForCalc): QueryxContext %w", err)
+	}
+
+	for rows.Next() {
+		order := jsonobject.OrderCalc{}
+		err := rows.StructScan(&order)
+		if err != nil {
+			return jsonobject.OrdersCalc{}, fmt.Errorf("db (GetOrdersForCalc): parsing rows %w", err)
+		}
+		res = append(res, order)
+	}
+	return res, nil
+}
+
+func (db *DB) UpdateOrders(ctx context.Context, orders jsonobject.OrdersCalc) error {
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	_, err := db.conn.NamedExecContext(tctx, sqlUpdateOrders, orders)
+	if err != nil {
+		return fmt.Errorf("db (UpdateOrders) %w", err)
+	}
+	return nil
 }

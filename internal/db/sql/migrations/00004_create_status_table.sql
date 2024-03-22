@@ -12,6 +12,12 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.status
     OWNER to postgres;
+
+CREATE INDEX IF NOT EXISTS "IDX_ID"
+    ON public.status USING btree
+    ("ID" ASC NULLS LAST)
+    WITH (deduplicate_items=True)
+    TABLESPACE pg_default;
 -- +goose StatementEnd
 
 -- +goose Down
