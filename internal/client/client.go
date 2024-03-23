@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const URLPattern = "http://%s/api/orders/%d"
+const URLPattern = "%s/api/orders/%d"
 
 var (
 	ErrorAccrualFatal        = errors.New("accrual service is unavailable")

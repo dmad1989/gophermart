@@ -17,7 +17,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-const timeout = time.Duration(time.Second * 10)
+const timeout = time.Duration(time.Second * 20)
 
 var (
 	//go:embed sql/migrations/*.sql
@@ -129,12 +129,12 @@ func (db *DB) CreateOrder(ctx context.Context, orderNum int) error {
 func (db *DB) GetOrderAuthor(ctx context.Context, orderNum int) (int, error) {
 	tctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	authorId := 0
-	err := db.conn.GetContext(tctx, &authorId, sqlCheckOrderAuthor, orderNum)
+	authorID := 0
+	err := db.conn.GetContext(tctx, &authorID, sqlCheckOrderAuthor, orderNum)
 	if err != nil {
 		return 0, fmt.Errorf("db (getOrderAuthor): %w", err)
 	}
-	return authorId, nil
+	return authorID, nil
 }
 
 func (db *DB) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
@@ -147,10 +147,12 @@ func (db *DB) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
 	defer cancel()
 	rows, err := db.conn.QueryxContext(tctx, sqlOrdersByUsers, userID)
 	if err != nil {
+		db.logger.Infow("db (GetOrdersByUser): QueryxContext", zap.Error(err))
 		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext %w", err)
 	}
 	if rows.Err() != nil {
-		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext rows.Err %w", err)
+		db.logger.Infow("db (GetOrdersByUser): QueryxContext rows.Err", zap.Error(rows.Err()))
+		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext rows.Err %w", rows.Err())
 	}
 
 	for rows.Next() {
