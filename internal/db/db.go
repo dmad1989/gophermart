@@ -149,6 +149,9 @@ func (db *DB) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
 	if err != nil {
 		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext %w", err)
 	}
+	if rows.Err() != nil {
+		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext rows.Err %w", err)
+	}
 
 	for rows.Next() {
 		order := jsonobject.Order{}
@@ -210,6 +213,9 @@ func (db *DB) GetWithdrawlsByUser(ctx context.Context) (jsonobject.Withdrawls, e
 	if err != nil {
 		return res, fmt.Errorf("db (GetWithdrawlsByUser): QueryxContext %w", err)
 	}
+	if rows.Err() != nil {
+		return res, fmt.Errorf("db (GetWithdrawlsByUser): QueryxContext rows.Err %w", err)
+	}
 
 	for rows.Next() {
 		withdraw := jsonobject.Withdraw{}
@@ -230,6 +236,9 @@ func (db *DB) GetOrdersForCalc(ctx context.Context) (jsonobject.OrdersCalc, erro
 	rows, err := db.conn.QueryxContext(tctx, sqlGetOrdersForCalc)
 	if err != nil {
 		return res, fmt.Errorf("db (GetOrdersForCalc): QueryxContext %w", err)
+	}
+	if rows.Err() != nil {
+		return res, fmt.Errorf("db (GetOrdersForCalc): QueryxContext rows.Err %w", err)
 	}
 
 	for rows.Next() {

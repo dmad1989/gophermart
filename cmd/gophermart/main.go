@@ -27,7 +27,7 @@ func main() {
 	ctx := context.WithValue(context.Background(), config.LoggerCtxKey, log)
 	defer log.Sync()
 	conf := config.ParseConfig()
-	db, err := db.New(ctx, conf.DbConnName)
+	db, err := db.New(ctx, conf.DBConnName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,8 +43,8 @@ func main() {
 	conveyor.Start(ctx, client, db)
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	log.Infow("config for start", zap.String("AccrualURL", conf.AccrualURL), zap.String("ApiURL", conf.ApiURL), zap.String("DbConnName", conf.DbConnName))
-	err = api.SeverStart(ctx, conf.ApiURL)
+	log.Infow("config for start", zap.String("AccrualURL", conf.AccrualURL), zap.String("APIURL", conf.APIURL), zap.String("DBConnName", conf.DBConnName))
+	err = api.SeverStart(ctx, conf.APIURL)
 	if err != nil {
 		panic(err)
 	}

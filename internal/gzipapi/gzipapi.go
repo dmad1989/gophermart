@@ -12,15 +12,15 @@ import (
 	"go.uber.org/zap"
 )
 
-type gzipApi struct {
+type gzipAPI struct {
 	logger *zap.SugaredLogger
 }
 
-func New(ctx context.Context) *gzipApi {
-	return &gzipApi{logger: ctx.Value(config.LoggerCtxKey).(*zap.SugaredLogger)}
+func New(ctx context.Context) *gzipAPI {
+	return &gzipAPI{logger: ctx.Value(config.LoggerCtxKey).(*zap.SugaredLogger)}
 }
 
-func (g *gzipApi) Middleware(h http.Handler) http.Handler {
+func (g *gzipAPI) Middleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextW := w
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {

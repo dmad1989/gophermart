@@ -25,7 +25,7 @@ type Auth interface {
 	RegisterHandler(http.ResponseWriter, *http.Request)
 	CheckMiddleware(h http.Handler) http.Handler
 }
-type GzipApi interface {
+type gzipAPI interface {
 	Middleware(h http.Handler) http.Handler
 }
 
@@ -33,11 +33,11 @@ type api struct {
 	logger *zap.SugaredLogger
 	router *chi.Mux
 	auth   Auth
-	gzip   GzipApi
+	gzip   gzipAPI
 	wallet Wallet
 }
 
-func New(ctx context.Context, auth Auth, gzip GzipApi, wallet Wallet) *api {
+func New(ctx context.Context, auth Auth, gzip gzipAPI, wallet Wallet) *api {
 	api := &api{
 		router: chi.NewRouter(),
 		auth:   auth,

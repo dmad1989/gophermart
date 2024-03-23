@@ -103,12 +103,12 @@ func (w wallet) GetOrdersHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
-	ordersJson, err := orders.MarshalJSON()
+	ordersJSON, err := orders.MarshalJSON()
 	if err != nil {
 		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("getOrders: encoding response: %w", err))
 		return
 	}
-	res.Write(ordersJson)
+	res.Write(ordersJSON)
 }
 
 func (w wallet) BalanceHandler(res http.ResponseWriter, req *http.Request) {
@@ -124,12 +124,12 @@ func (w wallet) BalanceHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
-	balanceJson, err := balance.MarshalJSON()
+	balanceJSON, err := balance.MarshalJSON()
 	if err != nil {
 		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("balanceHandler: encoding response: %w", err))
 		return
 	}
-	res.Write(balanceJson)
+	res.Write(balanceJSON)
 	res.WriteHeader(http.StatusOK)
 }
 
@@ -204,12 +204,12 @@ func (w wallet) GetWithdrawalsHandler(res http.ResponseWriter, req *http.Request
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
-	withdrawalsJson, err := withdrawals.MarshalJSON()
+	withdrawalsJSON, err := withdrawals.MarshalJSON()
 	if err != nil {
 		errorResponse(res, http.StatusInternalServerError, fmt.Errorf("getWithdrawals: encoding response: %w", err))
 		return
 	}
-	res.Write(withdrawalsJson)
+	res.Write(withdrawalsJSON)
 }
 
 func errorResponse(res http.ResponseWriter, status int, err error) {

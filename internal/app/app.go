@@ -39,17 +39,17 @@ func (a App) CreateOrder(ctx context.Context, orderNum int) error {
 	if !validateNumber(orderNum) {
 		return fmt.Errorf("app (createOrder): %w ", ErrorFromatNumber)
 	}
-	authorId, err := a.db.GetOrderAuthor(ctx, orderNum)
+	authorID, err := a.db.GetOrderAuthor(ctx, orderNum)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("app (createOrder): %w ", err)
 	}
 
-	if authorId != 0 {
+	if authorID != 0 {
 		userID := ctx.Value(config.UserCtxKey)
 		if userID == "" {
 			return errors.New("app (createOrder): no user in context")
 		}
-		if authorId != userID {
+		if authorID != userID {
 			return fmt.Errorf("app (createOrder): %w ", ErrorOrderAuthor)
 		}
 		return fmt.Errorf("app (createOrder): %w ", ErrorOrderUnique)
