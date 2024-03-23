@@ -78,7 +78,7 @@ func New(ctx context.Context, connName string) (*DB, error) {
 	if err := goose.Up(conn.DB, "sql/migrations"); err != nil {
 		return nil, fmt.Errorf("goose: create table: %w", err)
 	}
-	res.logger.Infow("db started!")
+	res.logger.Infoln("db started!")
 	return &res, nil
 }
 
@@ -147,11 +147,9 @@ func (db *DB) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
 	defer cancel()
 	rows, err := db.conn.QueryxContext(tctx, sqlOrdersByUsers, userID)
 	if err != nil {
-		db.logger.Infow("db (GetOrdersByUser): QueryxContext", zap.Error(err))
 		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext %w", err)
 	}
 	if rows.Err() != nil {
-		db.logger.Infow("db (GetOrdersByUser): QueryxContext rows.Err", zap.Error(rows.Err()))
 		return res, fmt.Errorf("db (GetOrdersByUser): QueryxContext rows.Err %w", rows.Err())
 	}
 

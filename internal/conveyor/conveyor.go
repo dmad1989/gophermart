@@ -35,7 +35,7 @@ func Start(ctx context.Context, client Client, db DB) {
 		client: client,
 		db:     db,
 		logger: ctx.Value(config.LoggerCtxKey).(*zap.SugaredLogger)}
-	conv.logger.Infoln("worker start")
+	conv.logger.Debugln("worker start")
 	tCh := time.NewTicker(time.Duration(time.Second * tikerTimeout)).C
 	go conv.doReapeat(ctx, tCh)
 }
@@ -44,7 +44,7 @@ func (c conveyor) doReapeat(ctx context.Context, tCh <-chan time.Time) {
 	for {
 		select {
 		case <-ctx.Done():
-			c.logger.Infoln("worker done")
+			c.logger.Debugln("worker done")
 			return
 		case <-tCh:
 			c.CalcProcess(ctx)
@@ -54,21 +54,21 @@ func (c conveyor) doReapeat(ctx context.Context, tCh <-chan time.Time) {
 
 func (c conveyor) CalcProcess(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
-	c.logger.Infoln("worker in progress")
+	c.logger.Debugln("worker in progress")
 	orders, err := c.db.GetOrdersForCalc(ctx)
 	if err != nil {
-		c.logger.Infow("error in GetOrdersForCalc", zap.Error(err))
+		c.logger.Debugw("error in GetOrdersForCalc", zap.Error(err))
 		cancel()
 		return
 	}
-	c.logger.Infoln("step 1 done", zap.Int("len", len(orders)))
+	c.logger.Debugw("step 1 done", zap.Int("len", len(orders)))
 
 	var updOrders jsonobject.OrdersCalc
 	bCh := make(chan jsonobject.OrdersCalc)
 	defer close(bCh)
 	go func(ctx context.Context, bCh chan jsonobject.OrdersCalc) {
 		for b := range bCh {
-			c.logger.Infoln("step 3 processing")
+			c.logger.Debugw("step 3 processing")
 			err := c.db.UpdateOrders(ctx, b)
 			if err != nil {
 				c.logger.Infow("error in UpdateOrders", zap.Error(err))
@@ -81,13 +81,12 @@ func (c conveyor) CalcProcess(ctx context.Context) {
 	start := 0
 
 	for i, order := range orders {
-		c.logger.Infoln(i)
 		if sleepTime > 0 {
 			time.Sleep(sleepTime)
 		}
 		accrual, err := c.client.DoRequestAccrual(ctx, order.Number)
 		if err != nil {
-			c.logger.Infow("error in DoRequestAccrual", zap.Error(err))
+			c.logger.Debugw("error in DoRequestAccrual", zap.Error(err))
 			switch {
 			case errors.Is(err, client.ErrorAccrualFatal):
 				cancel()
@@ -106,7 +105,7 @@ func (c conveyor) CalcProcess(ctx context.Context) {
 
 		}
 		if !order.CalcStatus.Valid || accrual.Status != order.CalcStatus.String {
-			c.logger.Infoln("step 2 processing", zap.Int("len updOrders", len(updOrders)))
+			c.logger.Debugw("step 2 processing", zap.Int("len updOrders", len(updOrders)))
 			order.Accrual = accrual.Accrual
 			order.CalcStatus = sql.NullString{String: accrual.Status, Valid: true}
 			updOrders = append(updOrders, order)
@@ -120,5 +119,4 @@ func (c conveyor) CalcProcess(ctx context.Context) {
 			start = len(updOrders)
 		}
 	}
-	// close(bCh)
 }

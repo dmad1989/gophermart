@@ -22,7 +22,6 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.orders
     OWNER to postgres;
 
-
 CREATE INDEX IF NOT EXISTS "IDX_ORDER_USER"
     ON public.orders USING btree
     (userid ASC NULLS LAST)
@@ -32,7 +31,7 @@ CREATE INDEX IF NOT EXISTS "IDX_ORDER_USER"
 CREATE INDEX IF NOT EXISTS  "IDX_STATUSID"
     ON public.orders USING btree
     ("statusId" ASC NULLS LAST)
-    WITH (deduplicate_items=True)
+    WITH (deduplicate_items=False)
     TABLESPACE pg_default;
 -- +goose StatementEnd
 
