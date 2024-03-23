@@ -106,7 +106,7 @@ func easyjsonDfc1bcb3DecodeGithubComDmad1989GophermartInternalJsonobject1(in *jl
 		case "order":
 			out.Order = string(in.String())
 		case "sum":
-			out.Sum = float64(in.Float64())
+			out.Sum = float32(in.Float32())
 		case "processed_at":
 			out.ProcessedDate = string(in.String())
 		default:
@@ -131,7 +131,7 @@ func easyjsonDfc1bcb3EncodeGithubComDmad1989GophermartInternalJsonobject1(out *j
 	{
 		const prefix string = ",\"sum\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.Sum))
+		out.Float32(float32(in.Sum))
 	}
 	if in.ProcessedDate != "" {
 		const prefix string = ",\"processed_at\":"
@@ -398,7 +398,7 @@ func easyjsonDfc1bcb3DecodeGithubComDmad1989GophermartInternalJsonobject5(in *jl
 		case "CalcStatus":
 			easyjsonDfc1bcb3DecodeDatabaseSql(in, &out.CalcStatus)
 		case "Accrual":
-			out.Accrual = float64(in.Float64())
+			out.Accrual = float32(in.Float32())
 		default:
 			in.SkipRecursive()
 		}
@@ -426,7 +426,7 @@ func easyjsonDfc1bcb3EncodeGithubComDmad1989GophermartInternalJsonobject5(out *j
 	{
 		const prefix string = ",\"Accrual\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.Accrual))
+		out.Float32(float32(in.Accrual))
 	}
 	out.RawByte('}')
 }
@@ -527,7 +527,7 @@ func easyjsonDfc1bcb3DecodeGithubComDmad1989GophermartInternalJsonobject6(in *jl
 		case "status":
 			out.Status = string(in.String())
 		case "accrual":
-			out.Accrual = string(in.String())
+			out.Accrual = float32(in.Float32())
 		case "uploaded_at":
 			out.UploadDate = string(in.String())
 		default:
@@ -554,10 +554,10 @@ func easyjsonDfc1bcb3EncodeGithubComDmad1989GophermartInternalJsonobject6(out *j
 		out.RawString(prefix)
 		out.String(string(in.Status))
 	}
-	if in.Accrual != "" {
+	if in.Accrual != 0 {
 		const prefix string = ",\"accrual\":"
 		out.RawString(prefix)
-		out.String(string(in.Accrual))
+		out.Float32(float32(in.Accrual))
 	}
 	{
 		const prefix string = ",\"uploaded_at\":"
@@ -610,9 +610,9 @@ func easyjsonDfc1bcb3DecodeGithubComDmad1989GophermartInternalJsonobject7(in *jl
 		}
 		switch key {
 		case "current":
-			out.AccrualCurrent = float64(in.Float64())
+			out.AccrualCurrent = float32(in.Float32())
 		case "withdrawn":
-			out.Withdrawn = float64(in.Float64())
+			out.Withdrawn = float32(in.Float32())
 		default:
 			in.SkipRecursive()
 		}
@@ -635,12 +635,12 @@ func easyjsonDfc1bcb3EncodeGithubComDmad1989GophermartInternalJsonobject7(out *j
 		} else {
 			out.RawString(prefix)
 		}
-		out.Float64(float64(in.AccrualCurrent))
+		out.Float32(float32(in.AccrualCurrent))
 	}
 	{
 		const prefix string = ",\"withdrawn\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.Withdrawn))
+		out.Float32(float32(in.Withdrawn))
 	}
 	out.RawByte('}')
 }
@@ -692,7 +692,7 @@ func easyjsonDfc1bcb3DecodeGithubComDmad1989GophermartInternalJsonobject8(in *jl
 		case "status":
 			out.Status = string(in.String())
 		case "accrual":
-			out.Accrual = float64(in.Float64())
+			out.Accrual = float32(in.Float32())
 		default:
 			in.SkipRecursive()
 		}
@@ -720,7 +720,7 @@ func easyjsonDfc1bcb3EncodeGithubComDmad1989GophermartInternalJsonobject8(out *j
 	{
 		const prefix string = ",\"accrual\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.Accrual))
+		out.Float32(float32(in.Accrual))
 	}
 	out.RawByte('}')
 }

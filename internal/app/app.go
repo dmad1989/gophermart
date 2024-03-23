@@ -100,7 +100,7 @@ func (a App) GetUserBalance(ctx context.Context) (jsonobject.Balance, error) {
 		return jsonobject.Balance{}, errors.New("app (GetUserBalance): нет начислений, но есть списания")
 	}
 	//AccrualDB хранит в себе все когда либо начисленные баллы, чтобы узнать актуальный баланс вычитаем
-	b.AccrualCurrent = b.AccrualDB.Float64 - b.Withdrawn
+	b.AccrualCurrent = b.AccrualCurrent - b.Withdrawn
 
 	if b.AccrualCurrent < 0 {
 		return jsonobject.Balance{}, errors.New("app (GetUserBalance): минусовой баланс счета")
@@ -109,10 +109,10 @@ func (a App) GetUserBalance(ctx context.Context) (jsonobject.Balance, error) {
 	return b, nil
 }
 
-func getValidValue(num sql.NullFloat64) float64 {
-	var res float64
+func getValidValue(num sql.NullFloat64) float32 {
+	var res float32
 	if num.Valid {
-		res = num.Float64
+		res = float32(num.Float64)
 	}
 	return res
 }

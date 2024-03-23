@@ -161,7 +161,7 @@ func (db *DB) GetOrdersByUser(ctx context.Context) (jsonobject.Orders, error) {
 		}
 		order.UploadDate = order.UploadDateDB.Format(time.RFC3339)
 		if order.AccrualDB.Valid {
-			order.Accrual = order.AccrualDB.String
+			order.Accrual = float32(order.AccrualDB.Float64)
 		}
 
 		res = append(res, order)

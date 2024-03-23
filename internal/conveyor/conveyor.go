@@ -14,7 +14,7 @@ import (
 
 const batchSize = 100
 
-var tikerTimeout time.Duration = 30
+var tikerTimeout time.Duration = 10
 var sleepTime time.Duration = 0
 
 type conveyor struct {
